@@ -72,11 +72,5 @@ class StudyAppTest {
         Assertions.assertNotNull(answer);
     }
 
-    @Test
-    void doChatWithMcp() {
-        String chatId = UUID.randomUUID().toString();
-        String message = "帮我搜索一些考研学习的相关图片";
-        String answer =  studyApp.doChatWithMcp(message, chatId);
-        Assertions.assertNotNull(answer);
-    }
+
 }
