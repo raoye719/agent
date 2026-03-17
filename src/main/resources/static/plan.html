@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>规划助手 · 考研 AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<nav id="navbar">
+  <a class="nav-logo" href="index.html">KY<span>·AI</span></a>
+  <div class="nav-links">
+    <a href="index.html">首页</a>
+    <a href="plan.html" class="active">规划助手</a>
+    <a href="study.html">学习问答</a>
+    <a href="tools.html">工具助手</a>
+  </div>
+</nav>
+<div class="page-hero">
+  <div class="hero-badge">STUDY PLANNER</div>
+  <div class="page-hero-title">智能规划助手</div>
+  <p class="page-hero-sub">AI 动态管理每日计划，早上生成安排，晚上记录进度，形成持续优化的学习闭环</p>
+</div>
+<div class="inner-main">
+  <div class="card">
+    <div class="card-label">第一步 · 创建本周计划</div>
+    <div class="row">
+      <div class="field"><label>开始日期</label><input type="date" id="plan-start"/></div>
+      <div class="field"><label>结束日期</label><input type="date" id="plan-end"/></div>
+    </div>
+    <div class="field"><label>周计划描述（自然语言，越详细越好）</label>
+      <textarea id="plan-desc" placeholder="例如：本周重点复习数学极限，完成张宇30讲第1-3讲，做660题前50道；英语每天背200词；专业课408学习数据结构第1-3章..."></textarea></div>
+    <button class="btn btn-primary" onclick="createWeeklyPlan()" id="btn-create-plan">生成周计划</button>
+  </div>
+  <div class="result-box" id="result-plan">
+    <div class="result-header"><span class="result-hint">生成结果</span><span class="tag" id="tag-plan"></span></div>
+    <div class="md" id="pre-plan"></div>
+  </div>
+  <hr class="divider"/>
+  <div class="card">
+    <div class="card-label">当前周计划预览</div>
+    <button class="btn btn-ghost" onclick="readWeeklyPlan()" style="margin-bottom:1rem">读取周计划文件</button>
+    <div id="weekly-plan-preview" class="md" style="color:var(--muted);font-size:.88rem">点击上方按钮读取...</div>
+  </div>
+  <hr class="divider"/>
+  <div class="card">
+    <div class="card-label">第二步 · 早上生成今日计划</div>
+    <div class="row">
+      <div class="field"><label>日期（默认今天）</label><input type="date" id="morning-date"/></div>
+      <div class="field" style="justify-content:flex-end"><label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="morningRoutine()" id="btn-morning">🌅 生成今日计划</button></div>
+    </div>
+  </div>
+  <div class="result-box" id="result-morning">
+    <div class="result-header"><span class="result-hint" id="morning-file-hint"></span><span class="tag" id="tag-morning"></span></div>
+    <div class="md" id="pre-morning"></div>
+  </div>
+  <hr class="divider"/>
+  <div class="card">
+    <div class="card-label">第三步 · 晚上上报学习进度</div>
+    <div class="field"><label>日期（默认今天）</label><input type="date" id="evening-date" style="max-width:200px"/></div>
+    <div class="field"><label>今日完成情况（自由描述）</label>
+      <textarea id="evening-report" placeholder="例如：今天完成了数学30讲第一讲和660题前15道，英语背了80个单词，专业课没做到，下午有事耽误了..."></textarea></div>
+    <button class="btn btn-primary" onclick="eveningRoutine()" id="btn-evening">🌙 提交进度</button>
+  </div>
+  <div class="result-box" id="result-evening">
+    <div class="result-header"><span class="result-hint">AI 反馈与明日建议</span><span class="tag" id="tag-evening"></span></div>
+    <div class="md" id="pre-evening"></div>
+  </div>
+</div>
+<div class="wave-section">
+  <div class="wave-svg"><svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,38 1440,30 L1440,60 L0,60 Z" fill="#030810"/></svg></div>
+  <footer><div class="footer-logo">KY · AI</div><p class="footer-text">考研 AI 超级智能体</p></footer>
+</div>
+<script src="particles.js"></script>
+<script src="app.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const n=document.getElementById('navbar');n.style.background=window.scrollY>50?'rgba(2,4,8,.95)':'rgba(2,4,8,.75)';});
+</script>
+</body></html>

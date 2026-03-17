@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>学习问答 · 考研 AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<nav id="navbar">
+  <a class="nav-logo" href="index.html">KY<span>·AI</span></a>
+  <div class="nav-links">
+    <a href="index.html">首页</a>
+    <a href="plan.html">规划助手</a>
+    <a href="study.html" class="active">学习问答</a>
+    <a href="tools.html">工具助手</a>
+  </div>
+</nav>
+<div class="page-hero">
+  <div class="hero-badge">STUDY Q&A</div>
+  <div class="page-hero-title">考研学习问答</div>
+  <p class="page-hero-sub">基于考研知识库的专业问答，支持多轮对话记忆与流式输出，覆盖数学、英语、政治、408 全科目</p>
+</div>
+<div class="inner-main">
+  <div class="chat-wrap">
+    <div class="chat-window" id="chat-window">
+      <div class="bubble bubble-ai">你好！我是你的考研学习指导专家。可以问我数学、英语、政治、408 等科目的学习方法，或者寻求备考建议。有什么可以帮你的吗？</div>
+    </div>
+    <div class="chat-footer">
+      <textarea id="chat-input" placeholder="输入你的问题，Shift+Enter 换行，Enter 发送..." onkeydown="chatKeydown(event)"></textarea>
+      <button class="btn btn-primary" onclick="sendChat()" id="btn-send">发送</button>
+    </div>
+  </div>
+  <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap">
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickAsk('数学极限学习方法')">数学极限学习法</button>
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickAsk('英语长难句分析技巧')">英语长难句技巧</button>
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickAsk('408数据结构复习建议')">408数据结构复习</button>
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickAsk('考研政治如何高效备考')">政治高效备考</button>
+  </div>
+</div>
+<div class="wave-section">
+  <div class="wave-svg"><svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,38 1440,30 L1440,60 L0,60 Z" fill="#030810"/></svg></div>
+  <footer><div class="footer-logo">KY · AI</div><p class="footer-text">考研 AI 超级智能体</p></footer>
+</div>
+<script src="particles.js"></script>
+<script src="app.js"></script>
+<script>
+window.addEventListener('scroll',()=>{const n=document.getElementById('navbar');n.style.background=window.scrollY>50?'rgba(2,4,8,.95)':'rgba(2,4,8,.75)';});
+function quickAsk(q){document.getElementById('chat-input').value=q;sendChat();}
+</script>
+</body></html>

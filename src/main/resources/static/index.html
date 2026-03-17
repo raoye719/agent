@@ -3,111 +3,148 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>考研规划助手</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<title>考研 AI 超级智能体</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header>
-  <div class="logo">考研 <span>规划助手</span></div>
-  <nav>
-    <button class="active" onclick="showPage('plan')">📋 周计划</button>
-    <button onclick="showPage('morning')">🌅 早上</button>
-    <button onclick="showPage('evening')">🌙 晚上</button>
-    <button onclick="showPage('chat')">💬 问答</button>
-  </nav>
-</header>
+<canvas id="particles"></canvas>
 
-<main>
+<nav id="navbar">
+  <div class="nav-logo">KY<span>·AI</span></div>
+  <div class="nav-links">
+    <a href="#features">功能</a>
+    <a href="#how">使用方式</a>
+    <a href="study.html">学习问答</a>
+    <a href="plan.html">规划助手</a>
+    <a href="tools.html">工具助手</a>
+  </div>
+</nav>
 
-<!-- 周计划页 -->
-<div class="page active" id="page-plan">
-  <div class="section-title">创建本周计划</div>
-  <div class="section-desc">输入本周的学习目标，AI 整理成结构化周计划并保存到本地文件。</div>
-  <div class="card">
-    <div class="card-label">周期设置</div>
-    <div class="row">
-      <div class="field"><label>开始日期</label><input type="date" id="plan-start" /></div>
-      <div class="field"><label>结束日期</label><input type="date" id="plan-end" /></div>
-    </div>
-    <div class="field">
-      <label>周计划描述（自然语言，越详细越好）</label>
-      <textarea id="plan-desc" placeholder="例如：本周重点复习数学极限，完成张宇30讲第1-3讲，做660题前50道；英语每天背200词，完成颉斌斌语法课；专业课408学习数据结构第1-3章..."></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="createWeeklyPlan()" id="btn-create-plan">生成周计划</button>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">AI POWERED · 考研专属</div>
+  <h1 class="hero-title">考研 AI<br/>超级智能体</h1>
+  <p class="hero-sub">
+    融合 <em>大模型推理</em>、<em>知识库检索</em>、<em>自主规划</em> 三大核心能力<br/>
+    让 AI 成为你备考路上最强大的伙伴
+  </p>
+  <div class="hero-btns">
+    <a href="plan.html" class="btn-hero btn-hero-primary">开始使用 →</a>
+    <a href="#features" class="btn-hero btn-hero-ghost">了解功能</a>
   </div>
-  <hr class="divider" />
-  <div class="card">
-    <div class="card-label">当前周计划预览</div>
-    <button class="btn btn-ghost" onclick="readWeeklyPlan()" style="margin-bottom:1rem">读取周计划文件</button>
-    <div id="weekly-plan-preview" class="md" style="color:var(--muted);font-size:.9rem">点击上方按钮读取...</div>
-  </div>
-  <div class="result-box" id="result-plan">
-    <div class="result-header"><span class="hint">执行结果</span><span class="tag" id="tag-plan"></span></div>
-    <div class="md" id="pre-plan"></div>
+  <div class="scroll-hint">向下滚动</div>
+</section>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stats-inner">
+    <div class="fade-up">
+      <div class="stat-num">3</div>
+      <div class="stat-label">核心功能模块</div>
+    </div>
+    <div class="fade-up">
+      <div class="stat-num">∞</div>
+      <div class="stat-label">动态规划轮次</div>
+    </div>
+    <div class="fade-up">
+      <div class="stat-num">24/7</div>
+      <div class="stat-label">全天候陪伴备考</div>
+    </div>
   </div>
 </div>
 
-<!-- 早上页 -->
-<div class="page" id="page-morning">
-  <div class="section-title">早上 · 生成今日计划</div>
-  <div class="section-desc">AI 读取本周计划和昨日进度，动态生成今日任务安排并保存到文件。</div>
-  <div class="card">
-    <div class="row">
-      <div class="field"><label>日期（默认今天）</label><input type="date" id="morning-date" /></div>
-      <div class="field" style="justify-content:flex-end">
-        <label>&nbsp;</label>
-        <button class="btn btn-primary" onclick="morningRoutine()" id="btn-morning">🌅 生成今日计划</button>
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-header fade-up">
+    <div class="section-eyebrow">CORE FEATURES</div>
+    <h2 class="section-title-lg">三大核心模块</h2>
+    <p class="section-desc-lg">从学习规划到知识问答，再到智能工具调用，全方位覆盖你的考研需求</p>
+  </div>
+  <div class="features">
+    <div class="features-grid">
+
+      <a href="plan.html" class="feat-card fade-up">
+        <div class="feat-icon">📋</div>
+        <h3>智能规划助手</h3>
+        <p>输入本周学习目标，AI 自动拆分每日任务。早上生成今日计划，晚上上报进度后动态调整明日安排。支持混沌输入，如「今天不想学」「状态很差」，AI 会合理应对。</p>
+        <div class="feat-link">进入规划 →</div>
+      </a>
+
+      <a href="study.html" class="feat-card fade-up">
+        <div class="feat-icon">💬</div>
+        <h3>考研学习问答</h3>
+        <p>基于考研知识库的专业问答系统，支持多轮对话与记忆。涵盖数学、英语、政治、408 等科目，提供基础巩固、强化提升、冲刺押题全阶段指导。</p>
+        <div class="feat-link">开始问答 →</div>
+      </a>
+
+      <a href="tools.html" class="feat-card fade-up">
+        <div class="feat-icon">⚡</div>
+        <h3>AI 工具助手</h3>
+        <p>基于 ReAct 模式的自主智能体，可联网搜索、操作文件、抓取网页、下载资源、生成 PDF。输入复杂任务，AI 自动拆解并逐步执行，实时查看推理过程。</p>
+        <div class="feat-link">使用工具 →</div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-header fade-up">
+    <div class="section-eyebrow">HOW IT WORKS</div>
+    <h2 class="section-title-lg">每日使用流程</h2>
+    <p class="section-desc-lg">只需三步，让 AI 全程陪伴你的每一天备考</p>
+  </div>
+  <div class="how-grid">
+    <div class="how-step fade-up">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        <h4>创建周计划</h4>
+        <p>用自然语言描述本周学习目标，AI 自动整理成结构化周计划文件，作为全周任务的基准。</p>
+      </div>
+    </div>
+    <div class="how-step fade-up">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        <h4>早上生成今日计划</h4>
+        <p>每天早上点击生成，AI 读取周计划和昨日进度，结合你的状态动态调整今日任务量和内容，并保存到本地文件。</p>
+      </div>
+    </div>
+    <div class="how-step fade-up">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        <h4>晚上上报进度</h4>
+        <p>晚上用自然语言描述今日完成情况，AI 分析后更新进度文件，生成明日调整建议，形成持续优化的学习闭环。</p>
       </div>
     </div>
   </div>
-  <div class="result-box" id="result-morning">
-    <div class="result-header">
-      <span class="hint" id="morning-file-hint"></span>
-      <span class="tag" id="tag-morning"></span>
-    </div>
-    <div class="md" id="pre-morning"></div>
+</section>
+
+<!-- WAVE + FOOTER -->
+<div class="wave-section">
+  <div class="wave-svg">
+    <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <path d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,50 1440,40 L1440,80 L0,80 Z" fill="#030810"/>
+    </svg>
   </div>
+  <footer>
+    <div class="footer-logo">KY · AI</div>
+    <p class="footer-text">考研 AI 超级智能体 &nbsp;|&nbsp; Powered by Spring AI + DeepSeek<br/>智能规划 · 知识问答 · 工具调用</p>
+  </footer>
 </div>
 
-<!-- 晚上页 -->
-<div class="page" id="page-evening">
-  <div class="section-title">晚上 · 上报学习进度</div>
-  <div class="section-desc">用自然语言描述今天的完成情况，AI 解析后更新今日文件并给出明日建议。</div>
-  <div class="card">
-    <div class="field">
-      <label>日期（默认今天）</label>
-      <input type="date" id="evening-date" style="max-width:200px" />
-    </div>
-    <div class="field">
-      <label>今日完成情况（自由描述）</label>
-      <textarea id="evening-report" placeholder="例如：今天完成了数学30讲第一讲和660题前15道，英语背了80个单词，专业课没做到，下午有事耽误了。数学感觉还行，英语单词记忆效率偏低..."></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="eveningRoutine()" id="btn-evening">🌙 提交进度</button>
-  </div>
-  <div class="result-box" id="result-evening">
-    <div class="result-header"><span class="hint">AI 反馈与明日建议</span><span class="tag" id="tag-evening"></span></div>
-    <div class="md" id="pre-evening"></div>
-  </div>
-</div>
-
-<!-- 聊天页 -->
-<div class="page" id="page-chat">
-  <div class="section-title">考研学习问答</div>
-  <div class="section-desc">和 AI 聊考研学习相关的问题，支持多轮对话与流式输出。</div>
-  <div class="chat-wrap">
-    <div class="chat-window" id="chat-window">
-      <div class="bubble bubble-ai">你好！我是你的考研学习指导专家。可以问我数学、英语、专业课的学习方法，或寻求备考建议，有什么可以帮你的吗？</div>
-    </div>
-    <div class="chat-footer">
-      <textarea id="chat-input" placeholder="输入你的问题，Shift+Enter 换行，Enter 发送..." onkeydown="chatKeydown(event)"></textarea>
-      <button class="btn btn-primary" onclick="sendChat()" id="btn-send">发送</button>
-    </div>
-  </div>
-</div>
-
-</main>
-<script src="app.js"></script>
+<script src="particles.js"></script>
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('navbar');
+  nav.style.background = window.scrollY > 50 ? 'rgba(2,4,8,.95)' : 'rgba(2,4,8,.75)';
+});
+</script>
 </body>
 </html>

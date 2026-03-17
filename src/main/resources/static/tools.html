@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AI 工具助手 · 考研 AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+<style>
+.think-block{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:1rem;margin-bottom:.5rem;font-size:.84rem;color:var(--muted);line-height:1.75}
+.think-label{font-size:.7rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem}
+.tool-call{background:rgba(123,47,255,.06);border:1px solid rgba(123,47,255,.2);border-radius:8px;padding:.7rem 1rem;margin:.4rem 0;font-size:.82rem;color:#b060ff}
+.tool-result{background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.15);border-radius:8px;padding:.7rem 1rem;margin:.4rem 0;font-size:.82rem;color:#00cc66}
+.step-stream{display:flex;flex-direction:column;gap:.5rem;padding:1rem;overflow-y:auto;max-height:520px;scroll-behavior:smooth}
+.step-stream::-webkit-scrollbar{width:4px}
+.step-stream::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<nav id="navbar">
+  <a class="nav-logo" href="index.html">KY<span>·AI</span></a>
+  <div class="nav-links">
+    <a href="index.html">首页</a><a href="plan.html">规划助手</a>
+    <a href="study.html">学习问答</a><a href="tools.html" class="active">工具助手</a>
+  </div>
+</nav>
+<div class="page-hero">
+  <div class="hero-badge">AI AGENT · ReAct</div>
+  <div class="page-hero-title">AI 工具助手</div>
+  <p class="page-hero-sub">基于 ReAct 模式的自主智能体，可联网搜索、操作文件、抓取网页、生成 PDF，实时展示推理过程</p>
+</div>
+<div class="inner-main">
+  <div class="card">
+    <div class="card-label">输入任务</div>
+    <div class="field">
+      <textarea id="manus-input" placeholder="例如：帮我搜索2025年考研数学大纲的变化，整理成markdown文档..." style="min-height:100px"></textarea>
+    </div>
+    <div style="display:flex;gap:.8rem;align-items:center">
+      <button class="btn btn-primary" onclick="runManus()" id="btn-manus">⚡ 执行任务</button>
+      <button class="btn btn-ghost" onclick="clearManus()">清空</button>
+      <span id="manus-status" style="font-size:.8rem;color:var(--muted)"></span>
+    </div>
+  </div>
+  <div id="manus-output" style="display:none">
+    <div class="card">
+      <div class="card-label">AI 推理过程</div>
+      <div class="step-stream" id="step-stream"></div>
+    </div>
+  </div>
+  <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap">
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickManus('搜索2025年考研报名时间和流程')">搜索考研报名信息</button>
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickManus('帮我整理考研数学常用公式，生成一份PDF文档')">生成数学公式PDF</button>
+    <button class="btn btn-ghost" style="font-size:.8rem" onclick="quickManus('搜索并整理考研英语高频词汇Top100')">整理高频词汇</button>
+  </div>
+</div>
+<div class="wave-section">
+  <div class="wave-svg"><svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,38 1440,30 L1440,60 L0,60 Z" fill="#030810"/></svg></div>
+  <footer><div class="footer-logo">KY · AI</div><p class="footer-text">考研 AI 超级智能体</p></footer>
+</div>
+<script src="particles.js"></script>
+<script src="app.js"></script>
+<script src="tools.js"></script>
+</body></html>
