@@ -1,4 +1,4 @@
-package com.yupi.yuaiagent.plan.controller;
+package com.yupi.yuaiagent.controller;
 
 import com.yupi.yuaiagent.plan.agent.StudyPlanAgent;
 import com.yupi.yuaiagent.plan.manager.StudyStateManager;
