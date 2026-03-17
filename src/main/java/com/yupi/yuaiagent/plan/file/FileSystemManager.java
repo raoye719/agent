@@ -157,4 +157,99 @@ public class FileSystemManager {
             return false;
         }
     }
+    
+    /**
+     * 读取今日计划和完成情况文件
+     */
+    public String readDailyPlanAndProgress(LocalDate date) {
+        try {
+            String filename = date.format(DATE_FORMATTER) + "_学习计划完成情况.md";
+            Path filePath = Paths.get(workspacePath, STUDY_RECORDS_DIR, filename);
+            
+            if (!Files.exists(filePath)) {
+                log.info("计划和完成情况文件不存在：{}", filename);
+                return null;
+            }
+            
+            String content = new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
+            log.info("已读取计划和完成情况：{}", filename);
+            return content;
+        } catch (IOException e) {
+            log.error("读取计划和完成情况失败", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 写入今日计划和完成情况文件
+     */
+    public boolean writeDailyPlanAndProgress(LocalDate date, String content) {
+        try {
+            String filename = date.format(DATE_FORMATTER) + "_学习计划完成情况.md";
+            Path filePath = Paths.get(workspacePath, STUDY_RECORDS_DIR, filename);
+            Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));
+            log.info("已保存计划和完成情况：{}", filename);
+            return true;
+        } catch (IOException e) {
+            log.error("写入计划和完成情况失败", e);
+            return false;
+        }
+    }
+    
+    /**
+     * 查找包含指定日期的周计划文件
+     * 根据日期自动查找对应的周计划
+     */
+    public String findWeeklyPlanByDate(LocalDate date) {
+        try {
+            Path weeklyPlanDir = Paths.get(workspacePath, WEEKLY_PLAN_DIR);
+            
+            File[] files = weeklyPlanDir.toFile().listFiles((dir, name) -> 
+                name.endsWith("周计划.md")
+            );
+            
+            if (files == null || files.length == 0) {
+                log.warn("未找到周计划文件");
+                return null;
+            }
+            
+            // 遍历所有周计划文件，查找包含该日期的文件
+            for (File file : files) {
+                String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+                // 检查文件名中的日期范围
+                if (isDateInWeeklyPlan(file.getName(), date)) {
+                    log.info("找到包含日期{}的周计划：{}", date, file.getName());
+                    return content;
+                }
+            }
+            
+            log.warn("未找到包含日期{}的周计划", date);
+            return null;
+        } catch (IOException e) {
+            log.error("查找周计划失败", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 检查日期是否在周计划的日期范围内
+     */
+    private boolean isDateInWeeklyPlan(String filename, LocalDate date) {
+        // 文件名格式：第X周（YYYY-MM-DD-YYYY-MM-DD）周计划.md
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("（(\\d{4}-\\d{2}-\\d{2})-(\\d{4}-\\d{2}-\\d{2})）");
+            java.util.regex.Matcher matcher = pattern.matcher(filename);
+            
+            if (matcher.find()) {
+                LocalDate startDate = LocalDate.parse(matcher.group(1));
+                LocalDate endDate = LocalDate.parse(matcher.group(2));
+                
+                return !date.isBefore(startDate) && !date.isAfter(endDate);
+            }
+        } catch (Exception e) {
+            log.error("解析周计划日期范围失败", e);
+        }
+        
+        return false;
+    }
 }
