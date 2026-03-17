@@ -35,19 +35,36 @@ public class WebSearchTool {
         paramMap.put("engine", "baidu");
         try {
             String response = HttpUtil.get(SEARCH_API_URL, paramMap);
-            // 取出返回结果的前 5 条
             JSONObject jsonObject = JSONUtil.parseObj(response);
-            // 提取 organic_results 部分
+            // 优先取 organic_results，没有则尝试 answer_box 或直接返回原始响应摘要
             JSONArray organicResults = jsonObject.getJSONArray("organic_results");
-            List<Object> objects = organicResults.subList(0, 5);
-            // 拼接搜索结果为字符串
+            if (organicResults == null || organicResults.isEmpty()) {
+                // 尝试取 answer_box
+                JSONObject answerBox = jsonObject.getJSONObject("answer_box");
+                if (answerBox != null) {
+                    return answerBox.toString();
+                }
+                // 返回错误信息，告知 AI Key 可能无效
+                String errorMsg = jsonObject.getStr("error", "");
+                if (!errorMsg.isEmpty()) {
+                    return "搜索失败（API错误）：" + errorMsg + "。请直接根据已有知识回答用户问题并调用 terminate 结束。";
+                }
+                return "搜索未返回结果，请直接根据已有知识回答用户问题并调用 terminate 结束。";
+            }
+            int size = Math.min(5, organicResults.size());
+            List<Object> objects = organicResults.subList(0, size);
             String result = objects.stream().map(obj -> {
                 JSONObject tmpJSONObject = (JSONObject) obj;
-                return tmpJSONObject.toString();
+                // 只保留 title、snippet、link，不要完整 JSON
+                JSONObject slim = new JSONObject();
+                slim.set("title", tmpJSONObject.getStr("title", ""));
+                slim.set("snippet", tmpJSONObject.getStr("snippet", ""));
+                slim.set("link", tmpJSONObject.getStr("link", ""));
+                return slim.toString();
             }).collect(Collectors.joining(","));
             return result;
         } catch (Exception e) {
-            return "Error searching Baidu: " + e.getMessage();
+            return "搜索出错：" + e.getMessage() + "。请直接根据已有知识回答用户问题并调用 terminate 结束。";
         }
     }
 }

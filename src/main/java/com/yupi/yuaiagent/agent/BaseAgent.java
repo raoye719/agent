@@ -131,10 +131,31 @@ public abstract class BaseAgent {
                     log.info("Executing step {}/{}", stepNumber, maxSteps);
                     // 单步执行
                     String stepResult = step();
-                    String result = "Step " + stepNumber + ": " + stepResult;
-                    results.add(result);
-                    // 输出当前每一步的结果到 SSE
-                    sseEmitter.send(result);
+                    // 跳过无意义的步骤结果
+                    if (stepResult == null || stepResult.isBlank()
+                            || stepResult.equals("思考完成 - 无需行动")
+                            || stepResult.equals("没有工具需要调用")) {
+                        continue;
+                    }
+                    results.add(stepResult);
+                    // 判断类型：工具结果 or 最终回答
+                    String type;
+                    String displayResult;
+                    if (stepResult.startsWith("__FINAL__")) {
+                        type = "answer";
+                        displayResult = stepResult.substring(9);
+                    } else if (stepResult.startsWith("工具 ") && stepResult.contains("返回的结果")) {
+                        type = "tool";
+                        displayResult = stepResult;
+                    } else {
+                        type = "answer";
+                        displayResult = stepResult;
+                    }
+                    // 用 JSON 格式发送，避免换行导致的 SSE 分包问题
+                    String json = "{\"type\":\"" + type + "\",\"content\":\""
+                            + displayResult.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "")
+                            + "\"}"; 
+                    sseEmitter.send(SseEmitter.event().data(json));
                 }
                 // 检查是否超出步骤限制
                 if (currentStep >= maxSteps) {

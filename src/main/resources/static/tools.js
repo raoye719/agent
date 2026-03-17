@@ -47,19 +47,21 @@ async function runManus() {
     stream.scrollTop = stream.scrollHeight;
   }
 
-  function addToolCall(text) {
+  function addToolResult(text) {
     currentThink = null;
     const d = document.createElement('div');
-    d.className = 'tool-call';
-    d.textContent = '🔧 工具调用：' + text;
+    d.className = 'tool-result';
+    d.textContent = '✅ ' + text.slice(0, 300) + (text.length > 300 ? '...' : '');
     stream.appendChild(d);
     stream.scrollTop = stream.scrollHeight;
   }
 
-  function addToolResult(text) {
+  function addFinalAnswer(text) {
+    currentThink = null;
     const d = document.createElement('div');
-    d.className = 'tool-result';
-    d.textContent = '✅ 执行结果：' + text.slice(0, 200) + (text.length > 200 ? '...' : '');
+    d.className = 'final-answer';
+    d.innerHTML = '<div class="label">🎯 最终回答</div><div class="content"></div>';
+    d.querySelector('.content').textContent = text;
     stream.appendChild(d);
     stream.scrollTop = stream.scrollHeight;
   }
@@ -78,17 +80,30 @@ async function runManus() {
       const lines = buf.split('\n');
       buf = lines.pop();
       for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const chunk = line.slice(5).trim();
+        // 兼容两种格式：带 data: 前缀和不带
+        let chunk = line.trim();
+        if (chunk.startsWith('data:')) chunk = chunk.slice(5).trim();
         if (!chunk || chunk === '[DONE]') continue;
-        rawBuffer += chunk;
-        // 根据内容特征分类显示
-        if (chunk.includes('Invoking') || chunk.includes('Tool:') || chunk.includes('Action:')) {
-          addToolCall(chunk);
-        } else if (chunk.includes('Result:') || chunk.includes('Observation:') || chunk.includes('Output:')) {
-          addToolResult(chunk);
+
+        // 解析 JSON 格式 {type, content}
+        let type = 'answer', content = chunk;
+        try {
+          const obj = JSON.parse(chunk);
+          type = obj.type || 'answer';
+          content = obj.content || chunk;
+        } catch (e) {
+          // 非 JSON，当作普通文本处理
+          const stepMatch = chunk.match(/^Step \d+: (.+)$/s);
+          content = stepMatch ? stepMatch[1] : chunk;
+          type = content.startsWith('工具 ') ? 'tool' : 'answer';
+        }
+
+        if (!content || content === '思考完成 - 无需行动' || content.startsWith('Terminated') || content.startsWith('执行结束')) continue;
+
+        if (type === 'tool') {
+          addToolResult(content);
         } else {
-          addThink(chunk);
+          addFinalAnswer(content);
         }
       }
     }

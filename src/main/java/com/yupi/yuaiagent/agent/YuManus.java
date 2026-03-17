@@ -24,7 +24,8 @@ public class YuManus extends ToolCallAgent {
                 Based on user needs, proactively select the most appropriate tool or combination of tools.
                 For complex tasks, you can break down the problem and use different tools step by step to solve it.
                 After using each tool, clearly explain the execution results and suggest the next steps.
-                If you want to stop the interaction at any point, use the `terminate` tool/function call.
+                IMPORTANT: When you have completed the task or gathered enough information to answer the user, you MUST call the `terminate` tool immediately to end the interaction. Do not keep looping.
+                If a tool returns an error or no results, answer based on your own knowledge and then call `terminate`.
                 """;
         this.setNextStepPrompt(NEXT_STEP_PROMPT);
         this.setMaxSteps(20);

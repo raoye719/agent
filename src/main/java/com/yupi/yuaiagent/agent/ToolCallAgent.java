@@ -35,6 +35,9 @@ public class ToolCallAgent extends ReActAgent {
     // 保存工具调用信息的响应结果（要调用那些工具）
     private ChatResponse toolCallChatResponse;
 
+    // 保存最终回答（不调用工具时）
+    private String thinkFinalAnswer;
+
     // 工具调用管理者
     private final ToolCallingManager toolCallingManager;
 
@@ -65,11 +68,16 @@ public class ToolCallAgent extends ReActAgent {
         }
         // 2、调用 AI 大模型，获取工具调用结果
         List<Message> messageList = getMessageList();
-        Prompt prompt = new Prompt(messageList, this.chatOptions);
+        // 限制上下文长度，只保留系统消息 + 最近20条，避免超出 token 限制
+        List<Message> trimmedList = messageList;
+        if (messageList.size() > 20) {
+            trimmedList = messageList.subList(messageList.size() - 20, messageList.size());
+        }
+        Prompt prompt = new Prompt(trimmedList, this.chatOptions);
         try {
             ChatResponse chatResponse = getChatClient().prompt(prompt)
                     .system(getSystemPrompt())
-                    .tools(availableTools)
+                    .toolCallbacks(availableTools)
                     .call()
                     .chatResponse();
             // 记录响应，用于等下 Act
@@ -81,7 +89,18 @@ public class ToolCallAgent extends ReActAgent {
             List<AssistantMessage.ToolCall> toolCallList = assistantMessage.getToolCalls();
             // 输出提示信息
             String result = assistantMessage.getText();
+            // 兼容部分模型将内容放在 reasoningContent 的情况
+            if ((result == null || result.isBlank()) && assistantMessage.getMetadata() != null) {
+                Object reasoning = assistantMessage.getMetadata().get("reasoningContent");
+                if (reasoning != null && !reasoning.toString().isBlank()) {
+                    result = reasoning.toString();
+                }
+            }
             log.info(getName() + "的思考：" + result);
+            // 只要有文本内容就保存（无论是否同时调用工具）
+            if (result != null && !result.isBlank()) {
+                this.thinkFinalAnswer = result;
+            }
             log.info(getName() + "选择了 " + toolCallList.size() + " 个工具来使用");
             String toolCallInfo = toolCallList.stream()
                     .map(toolCall -> String.format("工具名称：%s，参数：%s", toolCall.name(), toolCall.arguments()))
@@ -89,7 +108,7 @@ public class ToolCallAgent extends ReActAgent {
             log.info(toolCallInfo);
             // 如果不需要调用工具，返回 false
             if (toolCallList.isEmpty()) {
-                // 只有不调用工具时，才需要手动记录助手消息
+                log.info(getName() + "最终回答内容：[" + result + "]");
                 getMessageList().add(assistantMessage);
                 return false;
             } else {
@@ -101,6 +120,13 @@ public class ToolCallAgent extends ReActAgent {
             getMessageList().add(new AssistantMessage("处理时遇到了错误：" + e.getMessage()));
             return false;
         }
+    }
+
+    @Override
+    protected String getFinalAnswer() {
+        String answer = this.thinkFinalAnswer;
+        this.thinkFinalAnswer = null;
+        return answer;
     }
 
     /**
@@ -130,6 +156,12 @@ public class ToolCallAgent extends ReActAgent {
                 .map(response -> "工具 " + response.name() + " 返回的结果：" + response.responseData())
                 .collect(Collectors.joining("\n"));
         log.info(results);
+        // 如果本次 think 同时给出了文本回答（如 doTerminate 同步调用的情况），附加到结果里
+        if (this.thinkFinalAnswer != null && !this.thinkFinalAnswer.isBlank()) {
+            String answer = this.thinkFinalAnswer;
+            this.thinkFinalAnswer = null;
+            return "__FINAL__" + answer;
+        }
         return results;
     }
 }
