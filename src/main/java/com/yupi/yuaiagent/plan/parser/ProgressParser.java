@@ -34,10 +34,9 @@ public class ProgressParser {
     /**
      * 处理进度上报
      * 核心流程：
-     * 1. 读取当天的计划和完成情况文件
-     * 2. 解析自然语言进度
-     * 3. 更新文件中的完成情况部分
-     * 4. 生成明日建议
+     * 1. 解析自然语言进度
+     * 2. 生成进度记录文件
+     * 3. 生成明日建议
      */
     public Map<String, Object> processProgressReport(LocalDate today, String progressReport) {
         log.info("开始处理进度上报：{}", today);
@@ -48,16 +47,13 @@ public class ProgressParser {
         Map<String, Object> parsedProgress = parseProgressReport(progressReport);
         result.put("parsedProgress", parsedProgress);
         
-        // 步骤2：读取当天的计划文件
-        String existingContent = fileSystemManager.readDailyPlanAndProgress(today);
-        
-        // 步骤3：更新文件内容
-        String updatedContent = updatePlanAndProgressFile(today, existingContent, parsedProgress, progressReport);
-        boolean saved = fileSystemManager.writeDailyPlanAndProgress(today, updatedContent);
+        // 步骤2：生成进度记录文件
+        String progressRecord = generateProgressRecord(today, parsedProgress, progressReport);
+        boolean saved = fileSystemManager.writeProgressRecord(today, progressRecord);
         result.put("recordSaved", saved);
-        result.put("progressRecord", updatedContent);
+        result.put("progressRecord", progressRecord);
         
-        // 步骤4：生成明日建议
+        // 步骤3：生成明日建议
         String tomorrowSuggestions = generateTomorrowSuggestions(parsedProgress);
         result.put("tomorrowSuggestions", tomorrowSuggestions);
         
@@ -298,101 +294,5 @@ public class ProgressParser {
         }
         
         return suggestions.toString();
-    }
-    
-    /**
-     * 更新计划和完成情况文件
-     */
-    private String updatePlanAndProgressFile(LocalDate date, String existingContent, 
-                                            Map<String, Object> parsedProgress, String originalReport) {
-        StringBuilder content = new StringBuilder();
-        
-        if (existingContent != null && !existingContent.isEmpty()) {
-            // 保留原有的计划部分
-            content.append(existingContent);
-            
-            // 替换完成情况部分
-            String completionSection = buildCompletionSection(parsedProgress, originalReport);
-            
-            // 查找并替换"## ✅ 今日完成情况"部分
-            int completionIndex = content.indexOf("## ✅ 今日完成情况");
-            if (completionIndex != -1) {
-                int nextSectionIndex = content.indexOf("## 📝 状态记录", completionIndex);
-                if (nextSectionIndex != -1) {
-                    content.replace(completionIndex, nextSectionIndex, completionSection);
-                } else {
-                    content.replace(completionIndex, content.length(), completionSection);
-                }
-            }
-            
-            // 替换状态记录部分
-            String statusSection = buildStatusSection(parsedProgress);
-            int statusIndex = content.indexOf("## 📝 状态记录");
-            if (statusIndex != -1) {
-                content.replace(statusIndex, content.length(), statusSection);
-            }
-        } else {
-            // 如果文件不存在，创建新文件
-            content.append("# ").append(date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日")))
-                   .append(" 学习计划与完成情况\n\n");
-            content.append("## 📅 今日学习计划\n");
-            content.append("（早上生成）\n\n");
-            content.append(buildCompletionSection(parsedProgress, originalReport));
-            content.append(buildStatusSection(parsedProgress));
-        }
-        
-        return content.toString();
-    }
-    
-    /**
-     * 构建完成情况部分
-     */
-    private String buildCompletionSection(Map<String, Object> parsedProgress, String originalReport) {
-        StringBuilder section = new StringBuilder();
-        
-        section.append("## ✅ 今日完成情况\n\n");
-        
-        // 数学
-        section.append("### 📐 数学（完成情况：")
-               .append(parsedProgress.get("mathCompletion")).append("%）\n");
-        section.append("- 完成度：").append(parsedProgress.get("mathCompletion")).append("%\n\n");
-        
-        // 英语
-        section.append("### 📝 英语（完成情况：")
-               .append(parsedProgress.get("englishCompletion")).append("%）\n");
-        section.append("- 完成度：").append(parsedProgress.get("englishCompletion")).append("%\n\n");
-        
-        // 专业课
-        section.append("### 💻 专业课（完成情况：")
-               .append(parsedProgress.get("professionalCompletion")).append("%）\n");
-        section.append("- 完成度：").append(parsedProgress.get("professionalCompletion")).append("%\n\n");
-        
-        // 其他
-        if ((int) parsedProgress.get("otherCompletion") > 0) {
-            section.append("### 📚 其他（完成情况：")
-                   .append(parsedProgress.get("otherCompletion")).append("%）\n");
-            section.append("- 完成度：").append(parsedProgress.get("otherCompletion")).append("%\n\n");
-        }
-        
-        return section.toString();
-    }
-    
-    /**
-     * 构建状态记录部分
-     */
-    private String buildStatusSection(Map<String, Object> parsedProgress) {
-        StringBuilder section = new StringBuilder();
-        
-        section.append("## 📝 状态记录\n\n");
-        section.append("- 学习时长：").append(parsedProgress.get("studyHours")).append("小时\n");
-        section.append("- 总体完成度：").append(parsedProgress.get("averageCompletion")).append("%\n");
-        section.append("- 状态评价：").append(parsedProgress.get("statusEvaluation")).append("\n");
-        section.append("- 遇到的问题：").append(parsedProgress.get("problems")).append("\n");
-        section.append("- 其他备注：").append(parsedProgress.get("notes")).append("\n\n");
-        
-        // 添加明日建议
-        section.append(generateTomorrowSuggestions(parsedProgress));
-        
-        return section.toString();
     }
 }

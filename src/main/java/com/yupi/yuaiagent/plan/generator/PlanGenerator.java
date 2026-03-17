@@ -32,29 +32,24 @@ public class PlanGenerator {
     /**
      * 生成今日计划
      * 核心流程：
-     * 1. 根据日期自动查找周计划
+     * 1. 读取周计划
      * 2. 读取昨日进度
      * 3. 分析昨日完成度
      * 4. 根据完成度动态调整
-     * 5. 生成今日计划（将周计划拆分成7份）
-     * 6. 保存到文件
+     * 5. 生成今日计划
      */
-    public Map<String, Object> generateTodayPlan(LocalDate today) {
+    public String generateTodayPlan(LocalDate today) {
         log.info("开始生成今日计划：{}", today);
         
-        Map<String, Object> result = new HashMap<>();
-        
-        // 步骤1：根据日期自动查找周计划
-        String weeklyPlan = fileSystemManager.findWeeklyPlanByDate(today);
+        // 步骤1：读取周计划
+        String weeklyPlan = fileSystemManager.readWeeklyPlan(today);
         if (weeklyPlan == null) {
-            result.put("success", false);
-            result.put("message", "❌ 错误：未找到包含该日期的周计划，请先创建周计划");
-            return result;
+            return "❌ 错误：未找到周计划文件，请先创建周计划";
         }
-        log.info("✅ 已找到周计划");
+        log.info("✅ 已读取周计划");
         
         // 步骤2：读取昨日进度
-        String yesterdayProgress = fileSystemManager.readDailyPlanAndProgress(today.minusDays(1));
+        String yesterdayProgress = fileSystemManager.readYesterdayProgress(today);
         
         // 步骤3：分析昨日完成度
         Map<String, Object> yesterdayAnalysis = analyzeYesterdayProgress(yesterdayProgress);
@@ -66,19 +61,10 @@ public class PlanGenerator {
         // 步骤4：根据完成度动态调整
         String adjustmentStrategy = determineAdjustmentStrategy(completionRate, statusEvaluation);
         
-        // 步骤5：调用AI生成今日计划（拆分周计划）
+        // 步骤5：调用AI生成今日计划
         String todayPlan = generatePlanWithAI(weeklyPlan, yesterdayProgress, adjustmentStrategy, today);
         
-        // 步骤6：保存到文件
-        String fullContent = buildPlanAndProgressFile(today, todayPlan);
-        boolean saved = fileSystemManager.writeDailyPlanAndProgress(today, fullContent);
-        
-        result.put("success", true);
-        result.put("date", today);
-        result.put("message", todayPlan);
-        result.put("fileSaved", saved);
-        
-        return result;
+        return todayPlan;
     }
     
     /**
@@ -206,8 +192,7 @@ public class PlanGenerator {
         
         prompt.append("你是一个考研学习规划助手。\n\n");
         
-        prompt.append("## 任务\n");
-        prompt.append("根据周计划，为").append(today).append("生成具体的今日学习计划。\n\n");
+        prompt.append("我检查了周计划和昨天进度，这是今天的计划预览\n\n");
         
         prompt.append("## 周计划\n");
         prompt.append(weeklyPlan).append("\n\n");
@@ -220,61 +205,32 @@ public class PlanGenerator {
         prompt.append("## 调整策略\n");
         prompt.append(adjustmentStrategy).append("\n\n");
         
-        prompt.append("## 要求\n");
-        prompt.append("1. 将周计划拆分成7份（每天一份），今天是第").append(getDayOfWeek(today)).append("天\n");
-        prompt.append("2. 根据调整策略动态调整任务量\n");
-        prompt.append("3. 每个科目的任务要具体、可执行\n");
-        prompt.append("4. 标注每个任务的预计时长\n");
-        prompt.append("5. 提供学习建议和技巧\n");
-        prompt.append("6. 如果有昨日进度，要在计划中体现调整思路\n\n");
+        prompt.append("## 任务\n");
+        prompt.append("基于上述周计划、昨日进度和调整策略，为").append(today).append("生成今日学习计划。\n\n");
         
-        prompt.append("## 输出格式\n");
-        prompt.append("📅 今日学习计划（匹配周计划+昨日情况调整）\n");
-        prompt.append("> 调整思路：[说明为什么这样调整]\n");
-        prompt.append("> 周计划进度：[说明已完成的内容]\n\n");
-        prompt.append("### 📐 数学（今日目标X小时）\n");
-        prompt.append("1. [具体任务1] ✅\n");
-        prompt.append("2. [具体任务2] ✅\n\n");
-        prompt.append("### 📝 英语（今日目标X小时）\n");
-        prompt.append("1. [具体任务1] ✅\n");
-        prompt.append("2. [具体任务2] ✅\n\n");
-        prompt.append("### 💻 专业课（今日目标X小时）\n");
-        prompt.append("1. [具体任务1] ✅\n");
-        prompt.append("2. [具体任务2] ✅\n\n");
-        prompt.append("### 额外建议：\n");
-        prompt.append("[提供学习技巧和时间管理建议]\n");
+        prompt.append("要求：\n");
+        prompt.append("1. 所有任务必须来自周计划，不能私自添加或修改\n");
+        prompt.append("2. 根据调整策略动态调整任务量\n");
+        prompt.append("3. 按科目分类显示任务\n");
+        prompt.append("4. 标注每个任务的预计时长\n");
+        prompt.append("5. 提供学习建议\n\n");
+        
+        prompt.append("输出格式：\n");
+        prompt.append("📅 今日学习计划（").append(today).append("）\n");
+        prompt.append("================\n\n");
+        prompt.append("📐 数学（X小时）\n");
+        prompt.append("- 任务1\n");
+        prompt.append("- 任务2\n\n");
+        prompt.append("📝 英语（X小时）\n");
+        prompt.append("- 任务1\n");
+        prompt.append("- 任务2\n\n");
+        prompt.append("💻 专业课（X小时）\n");
+        prompt.append("- 任务1\n");
+        prompt.append("- 任务2\n\n");
+        prompt.append("💡 学习建议\n");
+        prompt.append("- 建议1\n");
+        prompt.append("- 建议2\n");
         
         return prompt.toString();
-    }
-    
-    /**
-     * 获取周几（1-7）
-     */
-    private int getDayOfWeek(LocalDate date) {
-        java.time.DayOfWeek dayOfWeek = date.getDayOfWeek();
-        int dayNum = dayOfWeek.getValue();
-        // 转换为周一=1，周日=7
-        return dayNum == 7 ? 7 : dayNum;
-    }
-    
-    /**
-     * 构建计划和完成情况文件内容
-     */
-    private String buildPlanAndProgressFile(LocalDate date, String todayPlan) {
-        StringBuilder content = new StringBuilder();
-        
-        content.append("# ").append(date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日")))
-               .append(" 学习计划与完成情况\n\n");
-        
-        content.append("## 📅 今日学习计划\n");
-        content.append(todayPlan).append("\n\n");
-        
-        content.append("## ✅ 今日完成情况\n");
-        content.append("（晚上更新）\n\n");
-        
-        content.append("## 📝 状态记录\n");
-        content.append("（晚上更新）\n");
-        
-        return content.toString();
     }
 }
