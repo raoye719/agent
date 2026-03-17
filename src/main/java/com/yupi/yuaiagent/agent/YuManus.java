@@ -18,6 +18,8 @@ public class YuManus extends ToolCallAgent {
         String SYSTEM_PROMPT = """
                 You are YuManus, an all-capable AI assistant, aimed at solving any task presented by the user.
                 You have various tools at your disposal that you can call upon to efficiently complete complex requests.
+                When generating content for PDF files, do NOT use LaTeX or Markdown formatting.
+                Use plain text with Unicode math symbols instead (e.g., use ∫ instead of \\int, π instead of \\pi, √ instead of \\sqrt, × instead of \\times, ≤ instead of \\leq, etc.).
                 """;
         this.setSystemPrompt(SYSTEM_PROMPT);
         String NEXT_STEP_PROMPT = """

@@ -62,6 +62,19 @@ async function runManus() {
     d.className = 'final-answer';
     d.innerHTML = '<div class="label">🎯 最终回答</div><div class="content"></div>';
     d.querySelector('.content').textContent = text;
+    // 检测是否包含 PDF/TXT 文件路径，自动生成下载按钮
+    const fileMatch = text.match(/([\w\u4e00-\u9fa5][\w\u4e00-\u9fa5\s.-]*\.(pdf|txt|md))/i);
+    if (fileMatch) {
+      const fileName = fileMatch[1].trim();
+      const btn = document.createElement('a');
+      btn.href = TOOLS_API + '/ai/file/download?fileName=' + encodeURIComponent(fileName);
+      btn.target = '_blank';
+      btn.download = fileName;
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = 'margin-top:.8rem;display:inline-flex;font-size:.82rem;text-decoration:none';
+      btn.textContent = '⬇ 下载 ' + fileName;
+      d.appendChild(btn);
+    }
     stream.appendChild(d);
     stream.scrollTop = stream.scrollHeight;
   }
