@@ -106,11 +106,11 @@ public class FileSystemManager {
     }
     
     /**
-     * 写入进度记录文件
+     * 写入进度记录文件（文件名与读取保持一致）
      */
     public boolean writeProgressRecord(LocalDate date, String content) {
         try {
-            String filename = date.format(DATE_FORMATTER) + "_学习进度记录.md";
+            String filename = date.format(DATE_FORMATTER) + "_学习计划完成情况.md";
             Path filePath = Paths.get(workspacePath, STUDY_RECORDS_DIR, filename);
             
             Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));

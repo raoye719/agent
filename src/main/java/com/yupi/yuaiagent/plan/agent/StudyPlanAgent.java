@@ -1,8 +1,8 @@
 package com.yupi.yuaiagent.plan.agent;
 
 import com.yupi.yuaiagent.advisor.MyLoggerAdvisor;
-import com.yupi.yuaiagent.agent.ToolCallAgent;
-import com.yupi.yuaiagent.plan.adjuster.DynamicPlanAdjuster;
+import com.yupi.yuaiagent.plan.config.PlanContextBuilder;
+import com.yupi.yuaiagent.plan.config.PlanPromptConfig;
 import com.yupi.yuaiagent.plan.manager.StudyStateManager;
 import com.yupi.yuaiagent.plan.model.DailyPlan;
 import com.yupi.yuaiagent.plan.model.StudyTask;
@@ -10,234 +10,192 @@ import com.yupi.yuaiagent.plan.model.WeeklyPlan;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 考研学习规划智能体
- * 实现动态规划、状态管理、闭环反馈
+ * 考研学习规划智能体（重构版）
+ * 核心改进：
+ * 1. 提示词统一管理（PlanPromptConfig）
+ * 2. 上下文统一构建（PlanContextBuilder）
+ * 3. 流程由 AI 驱动，代码只负责数据流转
+ * 4. 不使用 Tool Calling，保持高效
  */
 @Component
 @Slf4j
-public class StudyPlanAgent extends ToolCallAgent {
-    
+public class StudyPlanAgent {
+
+    private final ChatClient chatClient;
     private final StudyStateManager stateManager;
-    private final DynamicPlanAdjuster planAdjuster;
-    
-    public StudyPlanAgent(ToolCallback[] allTools, 
-                         ChatModel dashscopeChatModel,
+    private final PlanContextBuilder contextBuilder;
+
+    public StudyPlanAgent(ChatModel dashscopeChatModel,
                          StudyStateManager stateManager,
-                         DynamicPlanAdjuster planAdjuster) {
-        super(allTools);
+                         PlanContextBuilder contextBuilder) {
         this.stateManager = stateManager;
-        this.planAdjuster = planAdjuster;
-        
-        this.setName("StudyPlanAgent");
-        
-        String SYSTEM_PROMPT = """
-                你是一个专业的考研学习规划智能体，具备以下核心能力：
-                
-                1. **动态规划**：根据学生的学习进度自动调整学习计划
-                2. **状态管理**：记录和跟踪每日学习进度和任务完成情况
-                3. **闭环反馈**：规划→执行→检查→调整的完整循环
-                4. **智能顺延**：未完成任务自动加入后续计划
-                
-                你的工作流程：
-                - 早上：读取周计划 → 读取昨日进度 → 制定今日计划 → 发送预览
-                - 晚上：提醒上报 → 记录进度 → 调整明日计划
-                - 周末：汇总周进度 → 分析完成情况 → 制定下周方案
-                
-                核心原则：
-                - 绝不私自添加或修改任务，所有任务必须来自周计划
-                - 根据昨天完成情况动态调整今日任务量
-                - 实事求是：如果昨天没完成，今天不增加新任务
-                - 昨天完成好 → 按原计划推进
-                - 昨天完成差 → 减少任务量或重复昨天内容
-                - 昨天没完成 → 先补昨天，再考虑新任务
-                """;
-        this.setSystemPrompt(SYSTEM_PROMPT);
-        
-        String NEXT_STEP_PROMPT = """
-                根据用户需求，选择合适的工具来完成任务。
-                你可以使用文件操作工具来读取周计划和进度记录。
-                你可以使用PDF生成工具来生成学习报告。
-                如果任务完成，使用 terminate 工具结束。
-                """;
-        this.setNextStepPrompt(NEXT_STEP_PROMPT);
-        
-        this.setMaxSteps(20);
-        
-        // 初始化 AI 对话客户端
-        ChatClient chatClient = ChatClient.builder(dashscopeChatModel)
+        this.contextBuilder = contextBuilder;
+
+        // 初始化 ChatClient，使用统一的系统角色
+        this.chatClient = ChatClient.builder(dashscopeChatModel)
+                .defaultSystem(PlanPromptConfig.SYSTEM_ROLE)
                 .defaultAdvisors(new MyLoggerAdvisor())
                 .build();
-        this.setChatClient(chatClient);
     }
-    
+
     /**
-     * 早上流程：制定今日计划
+     * 早上流程：AI 根据周计划、昨日进度和学生状态，动态生成今日计划
+     *
+     * @param today 今天的日期
+     * @param studentStatus 学生的状态描述（可选）
+     * @return 今日计划
      */
-    public String morningRoutine(LocalDate today) {
-        log.info("开始早上流程：{}", today);
-        
-        StringBuilder result = new StringBuilder();
-        result.append("🌅 早上好！开始制定今日学习计划\n\n");
-        
-        // 步骤1：读取周计划
-        WeeklyPlan weeklyPlan = stateManager.getCurrentWeeklyPlan();
-        if (weeklyPlan == null) {
-            result.append("❌ 错误：未找到周计划，请先创建周计划\n");
-            return result.toString();
+    public String morningRoutine(LocalDate today, String studentStatus) {
+        log.info("🌅 开始早上流程：{}", today);
+
+        try {
+            // 1. 获取数据
+            WeeklyPlan weeklyPlan = stateManager.getCurrentWeeklyPlan();
+            if (weeklyPlan == null) {
+                log.error("未找到周计划");
+                return "❌ 错误：未找到周计划，请先创建周计划";
+            }
+
+            DailyPlan yesterdayPlan = stateManager.getYesterdayProgress(today);
+
+            // 2. 构建上下文
+            String weeklyContext = contextBuilder.buildWeeklyPlanContext(weeklyPlan);
+            String yesterdayContext = contextBuilder.buildYesterdayProgressContext(yesterdayPlan);
+            String statusContext = contextBuilder.buildStudentStatusContext(studentStatus);
+
+            // 3. 构建完整提示词
+            String prompt = PlanPromptConfig.getMorningPrompt(weeklyContext, yesterdayContext, statusContext);
+
+            // 4. 调用 AI 生成计划（一次调用）
+            log.info("📋 调用 AI 生成今日计划...");
+            String todayPlan = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            // 5. 解析并保存计划
+            DailyPlan parsedPlan = parsePlanFromAI(todayPlan, today);
+            stateManager.initializeDailyPlan(parsedPlan);
+
+            log.info("✅ 早上流程完成");
+            return todayPlan;
+
+        } catch (Exception e) {
+            log.error("早上流程执行失败", e);
+            return "❌ 早上流程执行失败：" + e.getMessage();
         }
-        result.append("✅ 步骤1：已读取周计划 - ").append(weeklyPlan.getWeekName()).append("\n");
-        
-        // 步骤2：读取昨日进度
-        DailyPlan yesterdayPlan = stateManager.getYesterdayProgress(today);
-        if (yesterdayPlan != null) {
-            result.append("✅ 步骤2：已读取昨日进度\n");
-            result.append(String.format("   - 昨日完成度：%d%%\n", yesterdayPlan.getCompletionRate()));
-            result.append(String.format("   - 学习时长：%.1f小时\n", yesterdayPlan.getActualTotalHours()));
-            result.append(String.format("   - 状态评价：%s\n", yesterdayPlan.getStatusEvaluation()));
-        } else {
-            result.append("ℹ️ 步骤2：没有昨日进度记录\n");
-        }
-        
-        // 步骤3：制定今日计划
-        result.append("\n📋 步骤3：制定今日计划\n");
-        
-        // 从周计划中获取今日的原始计划
-        DailyPlan originalPlan = findDailyPlanFromWeekly(weeklyPlan, today);
-        if (originalPlan == null) {
-            result.append("❌ 错误：周计划中未找到今日计划\n");
-            return result.toString();
-        }
-        
-        // 根据昨日进度调整今日计划
-        DailyPlan adjustedPlan = planAdjuster.adjustTodayPlan(originalPlan, yesterdayPlan);
-        stateManager.initializeDailyPlan(adjustedPlan);
-        
-        // 步骤4：发送计划预览
-        result.append("\n📝 步骤4：今日计划预览\n");
-        result.append("================\n");
-        result.append(formatDailyPlan(adjustedPlan));
-        
-        return result.toString();
     }
-    
+
     /**
-     * 晚上流程：记录进度并调整明日计划（改进版：使用AI生成建议）
+     * 晚上流程：AI 根据今日完成情况和学生反馈，生成反馈和明日建议
+     *
+     * @param today 今天的日期
+     * @param studentReport 学生的完成情况和反馈
+     * @return 反馈和明日建议
      */
-    public String eveningRoutine(LocalDate today, double studyHours, String statusEvaluation, String problems) {
-        log.info("开始晚上流程：{}", today);
-        
-        StringBuilder result = new StringBuilder();
-        result.append("🌙 晚上好！开始记录今日进度\n\n");
-        
-        DailyPlan todayPlan = stateManager.getCurrentDailyPlan();
-        if (todayPlan == null) {
-            result.append("❌ 错误：未找到今日计划\n");
-            return result.toString();
+    public String eveningRoutine(LocalDate today, String studentReport) {
+        log.info("🌙 开始晚上流程：{}", today);
+
+        try {
+            // 1. 获取数据
+            DailyPlan todayPlan = stateManager.getCurrentDailyPlan();
+            if (todayPlan == null) {
+                log.error("未找到今日计划");
+                return "❌ 错误：未找到今日计划";
+            }
+
+            Map<String, Object> weeklyStats = stateManager.getWeeklyStatistics();
+
+            // 2. 构建上下文
+            String todayPlanContext = contextBuilder.buildTodayPlanContext(todayPlan);
+            String metricsContext = contextBuilder.buildCompletionMetricsContext(todayPlan, weeklyStats);
+            String reportContext = contextBuilder.buildStudentReportContext(studentReport);
+
+            // 3. 构建完整提示词
+            String prompt = PlanPromptConfig.getEveningPrompt(todayPlanContext, metricsContext, reportContext);
+
+            // 4. 调用 AI 生成反馈（一次调用）
+            log.info("💡 调用 AI 生成反馈和建议...");
+            String feedback = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            // 5. 记录进度
+            stateManager.recordDailyProgress(today, studentReport, null, null);
+
+            log.info("✅ 晚上流程完成");
+            return feedback;
+
+        } catch (Exception e) {
+            log.error("晚上流程执行失败", e);
+            return "❌ 晚上流程执行失败：" + e.getMessage();
         }
-        
-        // 步骤1：记录进度
-        result.append("✅ 步骤1：记录今日进度\n");
-        result.append(String.format("   - 学习时长：%.1f小时\n", studyHours));
-        result.append(String.format("   - 完成度：%d%%\n", todayPlan.getCompletionRate()));
-        result.append(String.format("   - 状态评价：%s\n", statusEvaluation));
-        
-        // 步骤2：使用AI生成个性化建议（关键改进！）
-        result.append("\n💡 步骤2：AI生成的个性化建议\n");
-        String aiPrompt = planAdjuster.generatePromptForAI(todayPlan);
-        String aiSuggestions = getChatClient().prompt()
-                .user(aiPrompt)
-                .call()
-                .content();
-        result.append(aiSuggestions).append("\n");
-        
-        // 将AI建议转换为列表（简单处理）
-        List<String> suggestions = Arrays.asList(aiSuggestions.split("\n"));
-        
-        // 记录进度
-        stateManager.recordDailyProgress(today, statusEvaluation, problems, suggestions);
-        
-        // 步骤3：预览明日计划调整
-        result.append("\n📅 步骤3：明日计划将根据今日完成情况动态调整\n");
-        if (todayPlan.getCompletionRate() >= 80) {
-            result.append("   ✅ 今日完成度良好，明日按原计划推进\n");
-        } else if (todayPlan.getCompletionRate() >= 50) {
-            result.append("   ⚠️ 今日完成度一般，明日将减少任务量\n");
-        } else {
-            result.append("   ❌ 今日完成度较低，明日将优先补今日未完成任务\n");
-        }
-        
-        return result.toString();
     }
-    
+
     /**
-     * 周总结流程（改进版：使用AI生成）
+     * 周总结流程：AI 根据周学习数据，生成周总结和下周改进方案
+     *
+     * @return 周总结
      */
     public String weeklySummary() {
-        log.info("开始周总结流程");
-        
-        StringBuilder result = new StringBuilder();
-        result.append("📊 本周学习总结\n");
-        result.append("================\n\n");
-        
-        // 使用AI生成周总结（关键改进！）
-        String aiPrompt = planAdjuster.generateWeeklyPromptForAI();
-        String aiSummary = getChatClient().prompt()
-                .user(aiPrompt)
-                .call()
-                .content();
-        
-        result.append(aiSummary);
-        
-        return result.toString();
-    }
-    
-    /**
-     * 从周计划中查找指定日期的日计划
-     */
-    private DailyPlan findDailyPlanFromWeekly(WeeklyPlan weeklyPlan, LocalDate date) {
-        if (weeklyPlan.getDailyPlans() == null) {
-            return null;
-        }
-        
-        return weeklyPlan.getDailyPlans().stream()
-                .filter(plan -> plan.getPlanDate().equals(date))
-                .findFirst()
-                .orElse(null);
-    }
-    
-    /**
-     * 格式化日计划输出
-     */
-    private String formatDailyPlan(DailyPlan plan) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("日期：%s\n", plan.getPlanDate()));
-        sb.append(String.format("计划学习时长：%.1f小时\n\n", plan.getPlannedTotalHours()));
-        
-        // 按科目分组显示任务
-        Map<String, List<StudyTask>> tasksBySubject = plan.getTasks().stream()
-                .collect(java.util.stream.Collectors.groupingBy(StudyTask::getSubject));
-        
-        tasksBySubject.forEach((subject, tasks) -> {
-            sb.append(String.format("📚 %s\n", subject));
-            for (StudyTask task : tasks) {
-                sb.append(String.format("   - %s (%.1f小时)", task.getTaskName(), task.getPlannedHours()));
-                if (task.isPostponed()) {
-                    sb.append(" [顺延]");
-                }
-                sb.append("\n");
+        log.info("📊 开始周总结流程");
+
+        try {
+            // 1. 获取数据
+            WeeklyPlan weeklyPlan = stateManager.getCurrentWeeklyPlan();
+            if (weeklyPlan == null) {
+                log.error("未找到周计划");
+                return "❌ 错误：未找到周计划";
             }
-            sb.append("\n");
-        });
+
+            Map<String, Object> weeklyStats = stateManager.getWeeklyStatistics();
+            List<DailyPlan> dailyPlans = new java.util.ArrayList<>(stateManager.getDailyPlanHistory().values());
+
+            // 2. 构建上下文
+            String weeklyPlanContext = contextBuilder.buildWeeklyPlanForSummary(weeklyPlan);
+            String metricsContext = contextBuilder.buildWeeklyMetricsContext(weeklyStats);
+            String dailyProgressContext = contextBuilder.buildDailyProgressListContext(dailyPlans);
+
+            // 3. 构建完整提示词
+            String prompt = PlanPromptConfig.getWeeklySummaryPrompt(weeklyPlanContext, metricsContext, dailyProgressContext);
+
+            // 4. 调用 AI 生成周总结（一次调用）
+            log.info("📈 调用 AI 生成周总结...");
+            String summary = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            log.info("✅ 周总结流程完成");
+            return summary;
+
+        } catch (Exception e) {
+            log.error("周总结流程执行失败", e);
+            return "❌ 周总结流程执行失败：" + e.getMessage();
+        }
+    }
+
+    /**
+     * 从 AI 生成的计划中解析出结构化数据
+     * 这是一个简单的实现，可以根据需要改进
+     */
+    private DailyPlan parsePlanFromAI(String aiPlan, LocalDate date) {
+        DailyPlan plan = new DailyPlan();
+        plan.setPlanDate(date);
+        plan.setPlanName("AI 生成的计划");
         
-        return sb.toString();
+        // 简单实现：直接使用 AI 生成的计划文本
+        // 实际应用中可以调用 AI 进行结构化提取，或使用正则表达式解析
+        // 这里为了保持简单，暂时不做复杂的解析
+        
+        return plan;
     }
 }

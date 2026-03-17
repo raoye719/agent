@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>考研规划助手</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <div class="logo">考研 <span>规划助手</span></div>
+  <nav>
+    <button class="active" onclick="showPage('plan')">📋 周计划</button>
+    <button onclick="showPage('morning')">🌅 早上</button>
+    <button onclick="showPage('evening')">🌙 晚上</button>
+    <button onclick="showPage('chat')">💬 问答</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- 周计划页 -->
+<div class="page active" id="page-plan">
+  <div class="section-title">创建本周计划</div>
+  <div class="section-desc">输入本周的学习目标，AI 整理成结构化周计划并保存到本地文件。</div>
+  <div class="card">
+    <div class="card-label">周期设置</div>
+    <div class="row">
+      <div class="field"><label>开始日期</label><input type="date" id="plan-start" /></div>
+      <div class="field"><label>结束日期</label><input type="date" id="plan-end" /></div>
+    </div>
+    <div class="field">
+      <label>周计划描述（自然语言，越详细越好）</label>
+      <textarea id="plan-desc" placeholder="例如：本周重点复习数学极限，完成张宇30讲第1-3讲，做660题前50道；英语每天背200词，完成颉斌斌语法课；专业课408学习数据结构第1-3章..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="createWeeklyPlan()" id="btn-create-plan">生成周计划</button>
+  </div>
+  <hr class="divider" />
+  <div class="card">
+    <div class="card-label">当前周计划预览</div>
+    <button class="btn btn-ghost" onclick="readWeeklyPlan()" style="margin-bottom:1rem">读取周计划文件</button>
+    <div id="weekly-plan-preview" class="md" style="color:var(--muted);font-size:.9rem">点击上方按钮读取...</div>
+  </div>
+  <div class="result-box" id="result-plan">
+    <div class="result-header"><span class="hint">执行结果</span><span class="tag" id="tag-plan"></span></div>
+    <div class="md" id="pre-plan"></div>
+  </div>
+</div>
+
+<!-- 早上页 -->
+<div class="page" id="page-morning">
+  <div class="section-title">早上 · 生成今日计划</div>
+  <div class="section-desc">AI 读取本周计划和昨日进度，动态生成今日任务安排并保存到文件。</div>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>日期（默认今天）</label><input type="date" id="morning-date" /></div>
+      <div class="field" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="morningRoutine()" id="btn-morning">🌅 生成今日计划</button>
+      </div>
+    </div>
+  </div>
+  <div class="result-box" id="result-morning">
+    <div class="result-header">
+      <span class="hint" id="morning-file-hint"></span>
+      <span class="tag" id="tag-morning"></span>
+    </div>
+    <div class="md" id="pre-morning"></div>
+  </div>
+</div>
+
+<!-- 晚上页 -->
+<div class="page" id="page-evening">
+  <div class="section-title">晚上 · 上报学习进度</div>
+  <div class="section-desc">用自然语言描述今天的完成情况，AI 解析后更新今日文件并给出明日建议。</div>
+  <div class="card">
+    <div class="field">
+      <label>日期（默认今天）</label>
+      <input type="date" id="evening-date" style="max-width:200px" />
+    </div>
+    <div class="field">
+      <label>今日完成情况（自由描述）</label>
+      <textarea id="evening-report" placeholder="例如：今天完成了数学30讲第一讲和660题前15道，英语背了80个单词，专业课没做到，下午有事耽误了。数学感觉还行，英语单词记忆效率偏低..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="eveningRoutine()" id="btn-evening">🌙 提交进度</button>
+  </div>
+  <div class="result-box" id="result-evening">
+    <div class="result-header"><span class="hint">AI 反馈与明日建议</span><span class="tag" id="tag-evening"></span></div>
+    <div class="md" id="pre-evening"></div>
+  </div>
+</div>
+
+<!-- 聊天页 -->
+<div class="page" id="page-chat">
+  <div class="section-title">考研学习问答</div>
+  <div class="section-desc">和 AI 聊考研学习相关的问题，支持多轮对话与流式输出。</div>
+  <div class="chat-wrap">
+    <div class="chat-window" id="chat-window">
+      <div class="bubble bubble-ai">你好！我是你的考研学习指导专家。可以问我数学、英语、专业课的学习方法，或寻求备考建议，有什么可以帮你的吗？</div>
+    </div>
+    <div class="chat-footer">
+      <textarea id="chat-input" placeholder="输入你的问题，Shift+Enter 换行，Enter 发送..." onkeydown="chatKeydown(event)"></textarea>
+      <button class="btn btn-primary" onclick="sendChat()" id="btn-send">发送</button>
+    </div>
+  </div>
+</div>
+
+</main>
+<script src="app.js"></script>
+</body>
+</html>

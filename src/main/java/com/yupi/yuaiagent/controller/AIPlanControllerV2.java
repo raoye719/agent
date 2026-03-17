@@ -26,10 +26,10 @@ public class AIPlanControllerV2 {
     private PlanGenerator planGenerator;
     
     @Resource
-    private ProgressParser progressParser;
-    
-    @Resource
     private WeeklyPlanService weeklyPlanService;
+
+    @Resource
+    private ProgressParser progressParser;
     
     /**
      * 初始化工作目录
@@ -86,16 +86,17 @@ public class AIPlanControllerV2 {
     
     /**
      * 早上流程：生成今日计划
-     * 自动读取周计划和昨日进度，生成今日计划
+     * 自动读取周计划和昨日进度，生成今日计划，并保存到文件
      */
     @GetMapping("/daily/morning")
     public Map<String, Object> morningRoutine(@RequestParam(required = false) String date) {
         Map<String, Object> response = new HashMap<>();
         try {
             LocalDate today = date != null ? LocalDate.parse(date) : LocalDate.now();
-            
-            String todayPlan = planGenerator.generateTodayPlan(today).toString();
-            
+
+            // 生成今日计划（内部已自动保存到 study_records/{date}_学习计划完成情况.md）
+            String todayPlan = planGenerator.generateTodayPlan(today);
+
             response.put("success", true);
             response.put("date", today);
             response.put("message", todayPlan);
@@ -109,34 +110,43 @@ public class AIPlanControllerV2 {
     
     /**
      * 晚上流程：上报学习进度
-     * 接收自然语言进度报告，生成进度记录和明日建议
+     * 接收自然语言进度报告，AI生成反馈后追加写入当日文件
      */
     @PostMapping("/daily/evening")
     public Map<String, Object> eveningRoutine(
             @RequestParam(required = false) String date,
-            @RequestBody Map<String, String> request) {
+            @RequestParam String progressReport) {
         Map<String, Object> response = new HashMap<>();
         try {
             LocalDate today = date != null ? LocalDate.parse(date) : LocalDate.now();
-            String progressReport = request.get("progressReport");
-            
+
             if (progressReport == null || progressReport.trim().isEmpty()) {
                 response.put("success", false);
                 response.put("message", "❌ 进度报告不能为空");
                 return response;
             }
-            
-            // 处理进度上报
-            Map<String, Object> result = progressParser.processProgressReport(today, progressReport);
-            
+
+            // 1. 读取早上生成的今日计划文件
+            String existingContent = fileSystemManager.readProgressRecord(today);
+            if (existingContent == null) {
+                existingContent = "";
+            }
+
+            // 2. 让 AI 根据进度报告生成完成情况和明日建议
+            String aiFeedback = planGenerator.generateEveningFeedback(today, existingContent, progressReport);
+
+            // 3. 追加写入到当日文件
+            String updatedContent = existingContent +
+                    "\n---\n\n" +
+                    "## ✅ 今日完成情况\n\n" + progressReport + "\n\n" +
+                    "## 🎯 明日建议\n\n" + aiFeedback + "\n";
+
+            boolean saved = fileSystemManager.writeProgressRecord(today, updatedContent);
+
             response.put("success", true);
             response.put("date", today);
-            response.put("message", "✅ 进度已记录");
-            response.put("parsedProgress", result.get("parsedProgress"));
-            response.put("recordSaved", result.get("recordSaved"));
-            response.put("tomorrowSuggestions", result.get("tomorrowSuggestions"));
-            response.put("progressRecord", result.get("progressRecord"));
-            
+            response.put("message", saved ? "✅ 进度已记录并保存" : "⚠️ 进度处理完成但文件保存失败");
+            response.put("feedback", aiFeedback);
             return response;
         } catch (Exception e) {
             response.put("success", false);
@@ -146,7 +156,7 @@ public class AIPlanControllerV2 {
     }
     
     /**
-     * 读取周计划(这个date有问题，需要校验)
+     * 读取周计划
      */
     @GetMapping("/weekly/read")
     public Map<String, Object> readWeeklyPlan(@RequestParam(required = false) String date) {
