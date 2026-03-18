@@ -1,4 +1,5 @@
-const API = 'http://localhost:8123/api';
+// 动态获取后端 API 地址，支持本地和云端部署
+const API = `${window.location.protocol}//${window.location.host}/api`;
 const CHAT_ID = 'user_' + Math.random().toString(36).slice(2, 9);
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,4 +1,5 @@
-const TOOLS_API = 'http://localhost:8123/api';
+// 动态获取后端 API 地址，支持本地和云端部署
+const TOOLS_API = `${window.location.protocol}//${window.location.host}/api`;
 
 window.addEventListener('scroll', () => {
   const n = document.getElementById('navbar');
@@ -52,6 +53,23 @@ async function runManus() {
     const d = document.createElement('div');
     d.className = 'tool-result';
     d.textContent = '✅ ' + text.slice(0, 300) + (text.length > 300 ? '...' : '');
+    stream.appendChild(d);
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  function addDownloadButton(fileName) {
+    currentThink = null;
+    const d = document.createElement('div');
+    d.className = 'final-answer';
+    d.innerHTML = '<div class="label">📄 文件已生成</div>';
+    const btn = document.createElement('a');
+    btn.href = TOOLS_API + '/ai/file/download?fileName=' + encodeURIComponent(fileName);
+    btn.target = '_blank';
+    btn.download = fileName;
+    btn.className = 'btn btn-primary';
+    btn.style.cssText = 'margin-top:.5rem;display:inline-flex;font-size:.85rem;text-decoration:none;padding:.5rem 1.2rem';
+    btn.textContent = '⬇ 下载 ' + fileName;
+    d.appendChild(btn);
     stream.appendChild(d);
     stream.scrollTop = stream.scrollHeight;
   }
@@ -113,7 +131,9 @@ async function runManus() {
 
         if (!content || content === '思考完成 - 无需行动' || content.startsWith('Terminated') || content.startsWith('执行结束')) continue;
 
-        if (type === 'tool') {
+        if (type === 'file') {
+          addDownloadButton(content);
+        } else if (type === 'tool') {
           addToolResult(content);
         } else {
           addFinalAnswer(content);

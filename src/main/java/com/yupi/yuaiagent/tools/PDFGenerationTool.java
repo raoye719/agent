@@ -43,9 +43,7 @@ public class PDFGenerationTool {
                     document.add(new Paragraph(line.isEmpty() ? " " : line));
                 }
             }
-            // 返回可下载的相对路径提示
-            return "PDF generated successfully. File saved at: " + filePath
-                    + ". 用户可通过服务器文件路径访问该文件。";
+            return "PDF生成成功，文件名：" + fileName + "，用户可点击下载按钮获取文件。";
         } catch (IOException e) {
             return "Error generating PDF: " + e.getMessage();
         }

@@ -151,6 +151,22 @@ public abstract class BaseAgent {
                         type = "answer";
                         displayResult = stepResult;
                     }
+                    // 无论哪种类型，只要包含 PDF 生成成功就发 file 事件
+                    if (stepResult.contains("PDF生成成功") || stepResult.contains("PDF generated successfully")) {
+                        java.util.regex.Matcher m = java.util.regex.Pattern
+                                .compile("文件名[：:] *([^，,。\\n\"]+\\.pdf)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                                .matcher(stepResult);
+                        if (!m.find()) {
+                            m = java.util.regex.Pattern
+                                    .compile("([\\w\\u4e00-\\u9fa5][\\w\\u4e00-\\u9fa5 ._-]*\\.pdf)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                                    .matcher(stepResult);
+                        }
+                        if (m.find()) {
+                            String pdfName = m.group(1).trim();
+                            String fileJson = "{\"type\":\"file\",\"content\":\"" + pdfName + "\"}";
+                            sseEmitter.send(SseEmitter.event().data(fileJson));
+                        }
+                    }
                     // 用 JSON 格式发送，避免换行导致的 SSE 分包问题
                     String json = "{\"type\":\"" + type + "\",\"content\":\""
                             + displayResult.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "")
